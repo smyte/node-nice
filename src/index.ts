@@ -1,4 +1,4 @@
-import Deque = require("double-ended-queue");
+import Deque = require('double-ended-queue');
 
 type Callback = () => void;
 
@@ -11,7 +11,7 @@ function next() {
   let cb: Callback | undefined = queue.shift();
 
   if (!cb) {
-    throw new Error("Unexpected next() event for node-nice");
+    throw new Error('Unexpected next() event for node-nice');
   }
 
   // If the queue empties out at any point, calls of nextImmediate from cb()
@@ -33,8 +33,19 @@ function next() {
   }
 }
 
-export function setNiceWorkTime(ms: number) {
+export function niceSetWorkMs(ms: number) {
   workTimeMs = ms;
+}
+
+export function niceQueue(cb: () => void): void {
+  if (queue.isEmpty()) {
+    setImmediate(next);
+  }
+  queue.push(cb);
+}
+
+export function niceShouldQueue(): boolean {
+  return Date.now() >= endWork;
 }
 
 export function nicePromise<T>(cb: () => T): Promise<T> {
@@ -42,20 +53,17 @@ export function nicePromise<T>(cb: () => T): Promise<T> {
     return Promise.resolve(cb());
   } else {
     return new Promise(resolve => {
-      nextNice(() => {
+      niceQueue(() => {
         resolve(cb());
       });
     });
   }
 }
 
-export function nextNice(cb: () => void): void {
+export function niceCallback(cb: () => void): void {
   if (Date.now() < endWork) {
     cb();
   } else {
-    if (queue.isEmpty()) {
-      setImmediate(next);
-    }
-    queue.push(cb);
+    niceQueue(cb);
   }
 }
