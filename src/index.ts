@@ -1,4 +1,4 @@
-import Deque = require('double-ended-queue');
+import Deque = require("double-ended-queue");
 
 type Callback = () => void;
 
@@ -11,7 +11,7 @@ function next() {
   let cb: Callback | undefined = queue.shift();
 
   if (!cb) {
-    throw new Error('Unexpected next() event for node-nice');
+    throw new Error("Unexpected next() event for node-nice");
   }
 
   // If the queue empties out at any point, calls of nextImmediate from cb()
@@ -48,7 +48,15 @@ export function niceShouldQueue(): boolean {
   return Date.now() >= endWork;
 }
 
-export function nicePromise<T>(cb: () => T): Promise<T> {
+export function niceCallback(cb: () => void): void {
+  if (Date.now() < endWork) {
+    cb();
+  } else {
+    niceQueue(cb);
+  }
+}
+
+export function nice<T>(cb: () => T): Promise<T> {
   if (Date.now() < endWork) {
     return Promise.resolve(cb());
   } else {
@@ -60,10 +68,42 @@ export function nicePromise<T>(cb: () => T): Promise<T> {
   }
 }
 
-export function niceCallback(cb: () => void): void {
-  if (Date.now() < endWork) {
-    cb();
-  } else {
-    niceQueue(cb);
-  }
+export function niceForEach<T>(
+  arr: T[],
+  cb: (value: T) => void
+): Promise<void> {
+  return new Promise(resolve => {
+    const length = arr.length;
+    let idx = 0;
+    const loop = () => {
+      while (idx < length && Date.now() < endWork) {
+        cb(arr[idx++]);
+      }
+      if (idx < length) {
+        niceQueue(loop);
+      } else {
+        resolve();
+      }
+    };
+    loop();
+  });
+}
+
+export function niceMap<T, U>(arr: T[], cb: (value: T) => U): Promise<U[]> {
+  return new Promise(resolve => {
+    const rv: U[] = Array(arr.length);
+    const length = arr.length;
+    let idx = 0;
+    const loop = () => {
+      while (idx < length && Date.now() < endWork) {
+        rv[idx] = cb(arr[idx++]);
+      }
+      if (idx < length) {
+        niceQueue(loop);
+      } else {
+        resolve(rv);
+      }
+    };
+    loop();
+  });
 }
