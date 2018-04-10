@@ -1,14 +1,11 @@
 import Deque = require("double-ended-queue");
 
-type Callback = () => void;
-
-const queue = new Deque<Callback>();
-
+const queue = new Deque<() => void>();
 let endWork = 0;
 let workTimeMs = 5;
 
 function next() {
-  let cb: Callback | undefined = queue.shift();
+  let cb: (() => void) | undefined = queue.shift();
 
   // If the queue empties out at any point, calls of nextImmediate from cb()
   // would trigger a loop, so we should not do it
@@ -75,15 +72,15 @@ export function nice<T>(cb: () => T): Promise<T> {
 
 export function niceForEach<T>(
   arr: T[],
-  cb: (value: T) => void
+  cb: (value: T, index: number) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const length = arr.length;
     let idx = 0;
     const loop = () => {
       try {
-        while (idx < length && Date.now() < endWork) {
-          cb(arr[idx++]);
+        for (; idx < length && Date.now() < endWork; idx++) {
+          cb(arr[idx], idx);
         }
       } catch (err) {
         reject(err);
@@ -99,26 +96,12 @@ export function niceForEach<T>(
   });
 }
 
-export function niceMap<T, U>(arr: T[], cb: (value: T) => U): Promise<U[]> {
-  return new Promise((resolve, reject) => {
-    const rv: U[] = Array(arr.length);
-    const length = arr.length;
-    let idx = 0;
-    const loop = () => {
-      try {
-        while (idx < length && Date.now() < endWork) {
-          rv[idx] = cb(arr[idx++]);
-        }
-      } catch (err) {
-        reject(err);
-        return;
-      }
-      if (idx < length) {
-        niceQueue(loop);
-      } else {
-        resolve(rv);
-      }
-    };
-    loop();
-  });
+export function niceMap<T, U>(
+  arr: T[],
+  cb: (value: T, index: number) => U
+): Promise<U[]> {
+  const rv: U[] = Array(arr.length);
+  return niceForEach(arr, (value, idx) => {
+    rv[idx] = cb(value, idx);
+  }).then(() => rv);
 }
