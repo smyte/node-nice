@@ -1,6 +1,6 @@
 {
   "name": "node-nice",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "node-nice",
   "license": "MIT",
   "repository": "",
@@ -9,20 +9,18 @@
     "email": "",
     "url": ""
   },
-  "keywords": [
-    ""
-  ],
-  "files": [
-    "lib"
-  ],
+  "keywords": [""],
+  "files": ["lib"],
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
     "clean": "rimraf lib && rimraf coverage",
-    "format": "prettier --write \"{src,__tests__}/**/*.ts\" --single-quote --trailing-comma es5",
+    "format":
+      "prettier --write \"{src,__tests__}/**/*.ts\" --single-quote --trailing-comma es5",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
     "prepare": "npm run build",
-    "prebuild": "npm run clean && npm run format && npm run lint && echo Using TypeScript && tsc --version",
+    "prebuild":
+      "npm run clean && npm run format && npm run lint && echo Using TypeScript && tsc --version",
     "build": "tsc --pretty",
     "test": "jest",
     "coverage": "jest --coverage",
@@ -55,11 +53,7 @@
       ".(ts)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
     "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|js)$",
-    "moduleFileExtensions": [
-      "ts",
-      "js"
-    ],
-    "testEnvironment": "node",
-    "mapCoverage": true
+    "moduleFileExtensions": ["ts", "js"],
+    "testEnvironment": "node"
   }
 }

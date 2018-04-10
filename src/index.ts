@@ -5,7 +5,7 @@ type Callback = () => void;
 const queue = new Deque<Callback>();
 
 let endWork = 0;
-let workTimeMs = 1;
+let workTimeMs = 5;
 
 function next() {
   let cb: Callback | undefined = queue.shift();
@@ -35,6 +35,7 @@ function next() {
 
 export function niceSetWorkMs(ms: number) {
   workTimeMs = ms;
+  endWork = Date.now() + workTimeMs;
 }
 
 export function niceQueue(cb: () => void): void {
@@ -58,11 +59,19 @@ export function niceCallback(cb: () => void): void {
 
 export function nice<T>(cb: () => T): Promise<T> {
   if (Date.now() < endWork) {
-    return Promise.resolve(cb());
+    try {
+      return Promise.resolve(cb());
+    } catch (err) {
+      return Promise.reject(err);
+    }
   } else {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       niceQueue(() => {
-        resolve(cb());
+        try {
+          resolve(cb());
+        } catch (err) {
+          reject(err);
+        }
       });
     });
   }
@@ -72,12 +81,17 @@ export function niceForEach<T>(
   arr: T[],
   cb: (value: T) => void
 ): Promise<void> {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const length = arr.length;
     let idx = 0;
     const loop = () => {
-      while (idx < length && Date.now() < endWork) {
-        cb(arr[idx++]);
+      try {
+        while (idx < length && Date.now() < endWork) {
+          cb(arr[idx++]);
+        }
+      } catch (err) {
+        reject(err);
+        return;
       }
       if (idx < length) {
         niceQueue(loop);
@@ -90,13 +104,18 @@ export function niceForEach<T>(
 }
 
 export function niceMap<T, U>(arr: T[], cb: (value: T) => U): Promise<U[]> {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const rv: U[] = Array(arr.length);
     const length = arr.length;
     let idx = 0;
     const loop = () => {
-      while (idx < length && Date.now() < endWork) {
-        rv[idx] = cb(arr[idx++]);
+      try {
+        while (idx < length && Date.now() < endWork) {
+          rv[idx] = cb(arr[idx++]);
+        }
+      } catch (err) {
+        reject(err);
+        return;
       }
       if (idx < length) {
         niceQueue(loop);
