@@ -1,4 +1,11 @@
-import { nice, niceSetWorkMs, niceMap, niceForEach } from "../src/index";
+import {
+  nice,
+  niceSetWorkMs,
+  niceMap,
+  niceForEach,
+  niceCallback,
+  niceShouldQueue
+} from "../src/index";
 
 let loopCounter;
 let loopImmediate;
@@ -28,6 +35,19 @@ function slow(value?) {
   return value;
 }
 
+test("nice callbacks work", done => {
+  expect(loopCounter).toEqual(0);
+  niceCallback(() => {
+    expect(loopCounter).toEqual(0);
+    slow();
+
+    niceCallback(() => {
+      expect(loopCounter).toEqual(1);
+      done();
+    });
+  });
+});
+
 test("nice promises complete", async () => {
   expect(loopCounter).toEqual(0);
   slow();
@@ -49,6 +69,48 @@ test("nice promises complete", async () => {
   // Next one falls into another loop though
   expect(await nice(() => loopCounter)).toEqual(2);
   expect(await nice(() => loopCounter)).toEqual(2);
+
+  await expect(
+    nice(() => {
+      throw Error("oh");
+    })
+  ).rejects.toThrow("oh");
+
+  // This checks that even a queued error throws
+  slow();
+  await expect(
+    nice(() => {
+      throw Error("oh");
+    })
+  ).rejects.toThrow("oh");
+});
+
+test("fast in parallel run in a single loop", async () => {
+  // Parallel slow calls all fall into their own loop
+  const first = range(5).map(idx => {
+    return nice(() => `idx=${idx} loop=${loopCounter}`);
+  });
+  expect(niceShouldQueue()).toBeFalsy();
+  slow();
+  expect(niceShouldQueue()).toBeTruthy();
+  const second = range(5).map(idx => {
+    return nice(() => `idx=${idx} loop=${loopCounter}`);
+  });
+
+  expect(await Promise.all(first)).toEqual([
+    "idx=0 loop=0",
+    "idx=1 loop=0",
+    "idx=2 loop=0",
+    "idx=3 loop=0",
+    "idx=4 loop=0"
+  ]);
+  expect(await Promise.all(second)).toEqual([
+    "idx=0 loop=1",
+    "idx=1 loop=1",
+    "idx=2 loop=1",
+    "idx=3 loop=1",
+    "idx=4 loop=1"
+  ]);
 });
 
 test("launched in parallel run serially", async () => {
@@ -111,4 +173,10 @@ test("forEach", async () => {
     "idx=3 loop=2",
     "idx=4 loop=2"
   ]);
+
+  let called = false;
+  await niceForEach([], idx => {
+    called = true;
+  });
+  expect(called).toEqual(false);
 });

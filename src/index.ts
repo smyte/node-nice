@@ -10,10 +10,6 @@ let workTimeMs = 5;
 function next() {
   let cb: Callback | undefined = queue.shift();
 
-  if (!cb) {
-    throw new Error("Unexpected next() event for node-nice");
-  }
-
   // If the queue empties out at any point, calls of nextImmediate from cb()
   // would trigger a loop, so we should not do it
   let skipTrigger = queue.isEmpty();
