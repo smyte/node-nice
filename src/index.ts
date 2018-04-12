@@ -4,7 +4,7 @@ const queue = new Deque<() => void>();
 let endWork = 0;
 let workTimeMs = 5;
 
-function next() {
+function nextNice() {
   let cb: (() => void) | undefined = queue.shift();
 
   // If the queue empties out at any point, calls of nextImmediate from cb()
@@ -22,7 +22,7 @@ function next() {
     }
   }
   if (!skipTrigger) {
-    setImmediate(next);
+    setImmediate(nextNice);
   }
 }
 
@@ -33,7 +33,7 @@ export function niceSetWorkMs(ms: number) {
 
 export function niceQueue(cb: () => void): void {
   if (queue.isEmpty()) {
-    setImmediate(next);
+    setImmediate(nextNice);
   }
   queue.push(cb);
 }
